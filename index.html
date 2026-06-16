@@ -151,23 +151,32 @@
     .event.has-votes {
       border-color: rgba(255, 190, 105, calc(.34 + var(--vote-heat, 0) * .55));
       background: rgba(23,26,47,.88);
+      padding-left: calc(18px + var(--vote-heat, 0) * 10px);
       box-shadow:
         0 0 0 1px rgba(255, 190, 105, calc(.10 + var(--vote-heat, 0) * .32)),
         0 8px calc(18px + var(--vote-heat, 0) * 22px) rgba(255, 156, 74, calc(.05 + var(--vote-heat, 0) * .18));
     }
+    .event > * {
+      position: relative;
+      z-index: 1;
+    }
     .event.has-votes::before {
       content: "";
       position: absolute;
-      inset: 0 auto 0 0;
-      width: calc(5px + var(--vote-heat, 0) * 9px);
-      background: rgba(255, 190, 105, calc(.55 + var(--vote-heat, 0) * .35));
+      inset: 8px auto 8px 8px;
+      width: calc(4px + var(--vote-heat, 0) * 7px);
+      border-radius: 999px;
+      background: rgba(255, 190, 105, calc(.58 + var(--vote-heat, 0) * .35));
+      z-index: 0;
+      pointer-events: none;
     }
     .event.has-votes::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: rgba(255, 190, 105, calc(.03 + var(--vote-heat, 0) * .13));
+      background: rgba(255, 190, 105, calc(.025 + var(--vote-heat, 0) * .10));
       pointer-events: none;
+      z-index: 0;
     }
     .event.voted { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(120,255,214,.38), 0 10px 28px rgba(120,255,214,.10); }
     .event-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
@@ -212,7 +221,6 @@
       line-height: 1;
     }
     .vote-cutoff button:hover { border-color: var(--accent); }
-    .vote-cutoff button:disabled { opacity: .35; cursor: not-allowed; border-color: var(--border); }
     #voteCutoffValue {
       min-width: 24px;
       text-align: center;
@@ -568,7 +576,6 @@ function matchesFilters(ev) {
 
 function render() {
   setupWarning.style.display = isConfigured() ? 'none' : 'block';
-  voteCutoff = Math.max(0, Math.min(voteCutoff, maxVoteCount()));
 
   const filtered = EVENTS.filter(matchesFilters).sort((a,b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
@@ -580,8 +587,6 @@ function render() {
   const peopleCount = Object.keys(votesByName).filter(name => Array.isArray(votesByName[name]) && votesByName[name].length).length;
   const votedEventCount = Object.keys(votesByEvent()).length;
   voteCutoffValue.textContent = voteCutoff;
-  decrementVoteCutoff.disabled = voteCutoff <= 0;
-  incrementVoteCutoff.disabled = voteCutoff >= maxVoteCount();
   const cutoffText = voteCutoff > 0 ? ` • showing events with ≥ ${voteCutoff} vote${voteCutoff === 1 ? '' : 's'}` : '';
   stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted${cutoffText}`;
   columns.innerHTML = DAYS.map(day => {
@@ -698,15 +703,7 @@ nameInput.addEventListener('change', () => {
 });
 
 artistSearch.addEventListener('input', render);
-
-function setVoteCutoff(nextCutoff) {
-  const maxVotes = maxVoteCount();
-  voteCutoff = Math.max(0, Math.min(maxVotes, nextCutoff));
-  render();
-}
-
-decrementVoteCutoff.addEventListener('click', () => setVoteCutoff(voteCutoff - 1));
-incrementVoteCutoff.addEventListener('click', () => setVoteCutoff(voteCutoff + 1));
+onlyVotedFilter.addEventListener('change', render);
 
 document.getElementById('clearMyVotes').addEventListener('click', () => {
   const name = normalizedName();
