@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ibiza July 2–5 Event Voter</title>
+  <style>
+    :root {
+      --bg: #0e1020;
+      --panel: #171a2f;
+      --panel-2: #20243d;
+      --text: #f7f7fb;
+      --muted: #a9afc8;
+      --border: #303651;
+      --accent: #78ffd6;
+      --accent-2: #ff7ad9;
+      --danger: #ffb4b4;
+      --shadow: 0 14px 40px rgba(0,0,0,.32);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 0%, #28305c 0%, var(--bg) 38%, #070812 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      background: rgba(14,16,32,.86);
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap { max-width: 1800px; margin: 0 auto; padding: 18px; }
+    h1 { margin: 0 0 6px; font-size: clamp(24px, 3vw, 42px); letter-spacing: -.04em; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(180px, 280px) minmax(180px, 1fr) minmax(220px, 360px) auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 16px;
+    }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"], .dropdown-button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 12px 13px;
+      font-size: 14px;
+      outline: none;
+    }
+    input[type="text"]:focus, .dropdown-button:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(120,255,214,.14); }
+    .clear-btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .clear-btn:hover { border-color: var(--accent); }
+    details.dropdown { position: relative; }
+    details.dropdown summary { list-style: none; cursor: pointer; }
+    details.dropdown summary::-webkit-details-marker { display: none; }
+    .dropdown-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: min(360px, 92vw);
+      max-height: 380px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #14172b;
+      box-shadow: var(--shadow);
+      z-index: 40;
+    }
+    .venue-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 10px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .venue-option:hover { background: rgba(255,255,255,.07); }
+    .venue-actions { display: flex; gap: 8px; padding: 8px 8px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .mini-btn { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 999px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
+    main.wrap { padding-top: 18px; }
+    .stats { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(280px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .day {
+      background: rgba(255,255,255,.045);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 12px;
+      min-height: 70vh;
+    }
+    .day h2 {
+      position: sticky;
+      top: 130px;
+      z-index: 5;
+      margin: -12px -12px 12px;
+      padding: 14px 12px 12px;
+      background: linear-gradient(rgba(23,26,47,.98), rgba(23,26,47,.92));
+      border-bottom: 1px solid var(--border);
+      border-radius: 22px 22px 0 0;
+      font-size: 17px;
+      text-transform: capitalize;
+    }
+    .event {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(23,26,47,.88);
+      color: var(--text);
+      padding: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .event:hover { transform: translateY(-1px); border-color: rgba(120,255,214,.6); }
+    .event.voted { border-color: var(--accent); background: linear-gradient(135deg, rgba(120,255,214,.14), rgba(255,122,217,.08)); }
+    .event-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+    .event-title { font-weight: 800; line-height: 1.1; font-size: 14px; }
+    .badge { flex: 0 0 auto; min-width: 28px; padding: 5px 8px; border-radius: 999px; background: var(--panel-2); color: var(--accent); font-weight: 800; font-size: 12px; text-align: center; border: 1px solid rgba(120,255,214,.22); }
+    .meta { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .artists { margin-top: 8px; font-size: 12px; line-height: 1.35; color: #d8dcf0; }
+    .vote-hint { margin-top: 8px; font-size: 11px; color: var(--accent); opacity: .9; }
+    .empty { color: var(--muted); border: 1px dashed var(--border); border-radius: 16px; padding: 18px; text-align: center; }
+    .warning { color: var(--danger); font-size: 12px; margin-top: 7px; display: none; }
+    @media (max-width: 1180px) {
+      .controls { grid-template-columns: 1fr 1fr; }
+      .columns { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
+      .day h2 { top: 196px; }
+    }
+    @media (max-width: 700px) {
+      .controls, .columns { grid-template-columns: 1fr; }
+      header { position: static; }
+      .day h2 { position: static; }
+    }
+  
+    .sync-status { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    .setup-box {
+      margin: 14px 0;
+      padding: 12px;
+      border: 1px solid rgba(255,180,180,.45);
+      background: rgba(255,180,180,.08);
+      color: var(--danger);
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .event[disabled] { opacity: .72; cursor: wait; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Ibiza Event Voter</h1>
+      <p class="subtitle">July 2–5, 2026. Enter your name, then tap events to vote/unvote. Votes are shared through Google Sheets.</p>
+      <div id="setupWarning" class="setup-box" style="display:none;">
+        Backend not configured yet. Paste your deployed Google Apps Script Web App URL into <code>APPS_SCRIPT_URL</code> in this HTML file.
+      </div>
+      <div class="controls">
+        <div>
+          <label for="nameInput">Your name</label>
+          <input id="nameInput" type="text" placeholder="e.g. Rob" autocomplete="name" />
+          <div id="nameWarning" class="warning">Enter a name before voting.</div>
+        </div>
+        <div>
+          <label for="artistSearch">Search artists / event names</label>
+          <input id="artistSearch" type="text" placeholder="e.g. Calvin Harris, boat, Pacha..." />
+        </div>
+        <div>
+          <label>Filter venues</label>
+          <details id="venueDropdown" class="dropdown">
+            <summary class="dropdown-button" id="venueSummary">All venues</summary>
+            <div class="dropdown-menu">
+              <div class="venue-actions">
+                <button class="mini-btn" id="allVenues" type="button">All</button>
+                <button class="mini-btn" id="noVenues" type="button">None</button>
+              </div>
+              <div id="venueOptions"></div>
+            </div>
+          </details>
+        </div>
+        <button class="clear-btn" id="clearMyVotes" type="button">Clear my votes</button>
+      </div>
+      <div id="syncStatus" class="sync-status"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="stats" class="stats"></div>
+    <section class="columns" id="columns"></section>
+  </main>
+
+<script>
+
+const EVENTS = [
+  {id:'thu-formentera-with-benefits', day:'thursday july 2', venue:"Boat Parties - Playa d'en Bossa", title:'Formentera With Benefits', start:'10:30', end:'21:00', artists:['operated by Ibiza Boat Club']},
+  {id:'thu-el-kiddo-bambuku', day:'thursday july 2', venue:'Bam-Bu-Ku Ibiza', title:'El Kiddo', start:'11:00', end:'20:00', artists:['Harry Mc', '+ special guests']},
+  {id:'thu-bottomless-brunch', day:'thursday july 2', venue:"Boat Parties - Playa d'en Bossa", title:'Bottomless Brunch Boat Party', start:'13:00', end:'17:00', artists:['operated by Ibiza Boat Club']},
+  {id:'thu-o-beach-music', day:'thursday july 2', venue:'O Beach Ibiza', title:'O Beach Music', start:'13:00', end:'23:00', artists:['Offaiah', 'Ferreck Dawn', 'Beyond Chicago', 'Bo Conquest', 'Cameo', 'Lucy Jane']},
+  {id:'thu-icons-destino', day:'thursday july 2', venue:'Destino Five Ibiza', title:'Pacha ICONS: Marco Carola presents Music On Daytime', start:'17:00', end:'23:00', artists:['Marco Carola', 'Carlita', 'Ahmed Spins', 'Grace Arribas']},
+  {id:'thu-la-discotheque', day:'thursday july 2', venue:'528 Ibiza', title:'La Discothèque', start:'17:00', end:'04:00', artists:['Colleen ‘Cosmo’ Murphy', 'Kirollus', 'Natasha Diggs', 'Simon Dunmore']},
+  {id:'thu-martin-garrix', day:'thursday july 2', venue:'Ushuaïa Ibiza', title:'Martin Garrix Opening Party', start:'17:00', end:'23:00', artists:['Martin Garrix', 'Lost Frequencies', 'Nova Blue', 'Italobros']},
+  {id:'thu-afrodise-moots', day:'thursday july 2', venue:'Playa Soleil', title:'Afrodise & Moots', start:'18:00', end:'03:00', artists:['Aaron Sevilla', 'Claudia León', '+ more TBA']},
+  {id:'thu-aftersun', day:'thursday july 2', venue:"Boat Parties - Playa d'en Bossa", title:'Aftersun Ibiza Boat Party', start:'18:15', end:'21:15', artists:['operated by Ibiza Boat Club']},
+  {id:'thu-pukka-up', day:'thursday july 2', venue:'Boat Parties - San Antonio', title:'Pukka Up Sunset Boat Party', start:'18:00', end:'21:00', artists:['upgrade includes entrance to O Beach and Amnesia']},
+  {id:'thu-sven-vath', day:'thursday july 2', venue:'Akasha - Las Dalias', title:'Sven Väth presents T.R.A.N.C.E', start:'19:00', end:'', artists:['Sven Väth', 'Maurizio Schmitz']},
+  {id:'thu-gala-cova', day:'thursday july 2', venue:'Cova Santa', title:'Gala by Ibán Mendoza', start:'19:00', end:'05:00', artists:['Line-up TBA']},
+  {id:'thu-josh-baker', day:'thursday july 2', venue:'Amnesia', title:'Josh Baker presents You&Me Opening Party', start:'23:00', end:'06:00', artists:['Josh Baker B2B Prospa', 'Cloonee', 'jWave B2B Job de Jong', 'Shonky B2B Dyed Soundorom', 'Moxie']},
+  {id:'thu-flow-pacha', day:'thursday july 2', venue:'Pacha Ibiza', title:'Franky Rizardo presents FLOW', start:'23:00', end:'06:00', artists:['Franky Rizardo', '+ more TBA']},
+  {id:'thu-fisher-unvrs', day:'thursday july 2', venue:'[UNVRS]', title:'FISHER', start:'23:30', end:'', artists:['FISHER', 'Chris Lake', 'Marten Hørger']},
+  {id:'thu-hugel-hi', day:'thursday july 2', venue:'Hï Ibiza', title:'HUGEL presents Make The Girls Dance', start:'23:30', end:'', artists:['HUGEL', 'Faul & Wad', 'Miss Monique', 'Eli Brown']},
+  {id:'thu-defected-chinois', day:'thursday july 2', venue:'Chinois Ibiza', title:'Defected', start:'23:30', end:'06:30', artists:['Arielle Free', 'Low Steppa', 'Oden & Fatzo', 'Paris Taylor B2B Perry Martin', 'Rsquared']},
+  {id:'thu-tiempo-lio', day:'thursday july 2', venue:'Lío Ibiza', title:'Tiempo', start:'23:45', end:'05:00', artists:['Nomis']},
+  {id:'thu-bubbles', day:'thursday july 2', venue:'Es Paradis', title:'Bubbles', start:'23:59', end:'06:00', artists:[]},
+
+  {id:'fri-formentera-with-benefits', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Formentera With Benefits', start:'10:30', end:'21:00', artists:['operated by Ibiza Boat Club']},
+  {id:'fri-brunch-club', day:'friday july 3', venue:'Bam-Bu-Ku Ibiza', title:'Ibiza Brunch Club', start:'11:00', end:'19:00', artists:['90 minutes of drink refills', 'admission to Pool Party at O Beach afterwards']},
+  {id:'fri-day-in-paradise', day:'friday july 3', venue:'Boat Parties - San Antonio', title:'A Day In Paradise', start:'12:00', end:'17:00', artists:[]},
+  {id:'fri-bottomless-brunch', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Bottomless Brunch Boat Party', start:'13:00', end:'17:00', artists:['operated by Ibiza Boat Club']},
+  {id:'fri-pool-party', day:'friday july 3', venue:'O Beach Ibiza', title:'Pool Party', start:'13:00', end:'23:00', artists:['Cameo', 'Jamie Love', 'Lucy Jane', 'Parris Taylor', 'Sam Dungate', 'Albert Bace']},
+  {id:'fri-oceanbeat-afternoon', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Afternoon Boat Party', start:'14:30', end:'17:30', artists:[]},
+  {id:'fri-cruise-crush', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Cruise Crush Boat Party', start:'14:30', end:'17:30', artists:[]},
+  {id:'fri-wndrlnd', day:'friday july 3', venue:'Ibiza Rocks Pool Club', title:'WNDRLND presents Origins', start:'14:00', end:'21:00', artists:['P.O.U. (Product Of Us)', 'Ardent', 'FourFourFour', 'Morgan Kasiera']},
+  {id:'fri-hot-creations', day:'friday july 3', venue:'Playa Soleil', title:'Hot Creations', start:'16:00', end:'23:00', artists:['Luke Dean B2B MJ Cole', 'Lee Foss B2B Locky', 'Joshwa', 'Joe Rolét']},
+  {id:'fri-kaluki', day:'friday july 3', venue:'528 Ibiza', title:'Kaluki', start:'17:00', end:'23:00', artists:['Julian Fijma', 'Cam Stockman', 'M-High', 'Pirate Copy', 'Elicia']},
+  {id:'fri-calvin-harris', day:'friday july 3', venue:'Ushuaïa Ibiza', title:'Calvin Harris | Friday', start:'17:00', end:'23:00', artists:['Calvin Harris', 'MK', "Tyson O'Brien"]},
+  {id:'fri-woomoon', day:'friday july 3', venue:'Cova Santa', title:'Woomoon', start:'18:00', end:'05:00', artists:['Hardt Antoine', 'Moons Voyager', 'Viken Arman', 'Yulia Niko']},
+  {id:'fri-oceanbeat-sunset', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Sunset Boat Party', start:'18:00', end:'21:00', artists:[]},
+  {id:'fri-aftersun', day:'friday july 3', venue:"Boat Parties - Playa d'en Bossa", title:'Aftersun Ibiza Boat Party', start:'18:15', end:'21:15', artists:['operated by Ibiza Boat Club']},
+  {id:'fri-rememberland', day:'friday july 3', venue:'Amnesia', title:'Rememberland', start:'19:00', end:'23:30', artists:['Dream Team', 'La Movida', 'Lugotti', 'Martin Viana']},
+  {id:'fri-house-frequency', day:'friday july 3', venue:'Akasha - Las Dalias', title:'House Of Frequency', start:'23:00', end:'', artists:['House Of Frequency', 'Happier', 'Roderic']},
+  {id:'fri-music-on', day:'friday july 3', venue:'Pacha Ibiza', title:'Marco Carola presents Music On', start:'23:00', end:'06:00', artists:['Marco Carola', 'ANOTR', 'Mason Collective', 'Gennaro']},
+  {id:'fri-david-guetta', day:'friday july 3', venue:'[UNVRS]', title:'David Guetta presents Galactic Circus', start:'23:30', end:'', artists:['David Guetta', 'Alesso', 'ZSS', 'Discolicious']},
+  {id:'fri-glitterbox', day:'friday july 3', venue:'Amnesia', title:'Glitterbox', start:'23:30', end:'06:00', artists:['Horse Meat Disco', 'Mousse T.', 'The Shapeshifters', 'Dave Lee', 'DJ Spen', 'Gok Wan']},
+  {id:'fri-dom-dolla', day:'friday july 3', venue:'Hï Ibiza', title:'Dom Dolla', start:'23:30', end:'', artists:['Dom Dolla', 'SG Lewis', 'CC:DISCO!', "Tyson O'Brien", 'Ewan McVicar B2B Special Request']},
+  {id:'fri-major-league-djz', day:'friday july 3', venue:'Chinois Ibiza', title:'Major League DJz', start:'23:30', end:'06:00', artists:['Major League DJz', 'Vanco', 'Cincity B2B Curol', 'Nadia Boulif']},
+  {id:'fri-puro-reggaeton', day:'friday july 3', venue:'Es Paradis', title:'Puro Reggaeton', start:'23:30', end:'06:00', artists:[]},
+  {id:'fri-fire-in-club', day:'friday july 3', venue:'Eden', title:'Fire In The Club', start:'23:45', end:'06:00', artists:['Charlie Sloth', '+ more TBA']},
+  {id:'fri-vintage-lio', day:'friday july 3', venue:'Lío Ibiza', title:'Vintage', start:'23:45', end:'05:00', artists:['Sebastian Gamboa']},
+
+  {id:'sat-formentera-with-benefits', day:'saturday july 4', venue:"Boat Parties - Playa d'en Bossa", title:'Formentera With Benefits', start:'10:30', end:'21:00', artists:['operated by Ibiza Boat Club']},
+  {id:'sat-el-kiddo-bambuku', day:'saturday july 4', venue:'Bam-Bu-Ku Ibiza', title:'El Kiddo', start:'11:00', end:'20:00', artists:['Harry Mc', '+ special guests']},
+  {id:'sat-bottomless-brunch', day:'saturday july 4', venue:"Boat Parties - Playa d'en Bossa", title:'Bottomless Brunch Boat Party', start:'13:00', end:'17:00', artists:['operated by Ibiza Boat Club']},
+  {id:'sat-soul-heaven', day:'saturday july 4', venue:'O Beach Ibiza', title:'Soul Heaven', start:'13:00', end:'23:00', artists:['Bear Juju', 'Jamie Love', 'Lucy Jane']},
+  {id:'sat-ibiza-anthems', day:'saturday july 4', venue:'Ibiza Rocks Pool Club', title:'Ibiza Anthems Pool Party', start:'14:00', end:'21:00', artists:['Switch Disco', '+ more TBA']},
+  {id:'sat-oceanbeat-afternoon', day:'saturday july 4', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Afternoon Boat Party', start:'14:30', end:'17:30', artists:[]},
+  {id:'sat-creme-de-creme', day:'saturday july 4', venue:'Playa Soleil', title:'Crême de Crême', start:'17:00', end:'04:00', artists:['Line-up TBA']},
+  {id:'sat-ants', day:'saturday july 4', venue:'Ushuaïa Ibiza', title:'ANTS', start:'17:00', end:'23:00', artists:['Adam Beyer', 'Andres Campo', 'Tini Gessler', 'Syreeta', 'Raul Rodriguez']},
+  {id:'sat-float-your-boat', day:'saturday july 4', venue:'Boat Parties - San Antonio', title:'Float Your Boat', start:'18:00', end:'21:00', artists:['all tickets include entry to O Beach & Es Paradis']},
+  {id:'sat-oceanbeat-sunset', day:'saturday july 4', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Sunset Boat Party', start:'18:00', end:'21:00', artists:[]},
+  {id:'sat-pukka-up', day:'saturday july 4', venue:'Boat Parties - San Antonio', title:'Pukka Up Sunset Boat Party', start:'18:00', end:'21:00', artists:['upgrade includes entrance to O Beach and Amnesia']},
+  {id:'sat-aftersun', day:'saturday july 4', venue:"Boat Parties - Playa d'en Bossa", title:'Aftersun Ibiza Boat Party', start:'18:15', end:'21:15', artists:['operated by Ibiza Boat Club']},
+  {id:'sat-supernova', day:'saturday july 4', venue:'Akasha - Las Dalias', title:'Supernova x Do Not Sit', start:'18:00', end:'', artists:['Yazzmin', 'Igor Marijuan', 'Tim Green', 'Nico Morano', 'Bodaishin']},
+  {id:'sat-saturdays-528', day:'saturday july 4', venue:'528 Ibiza', title:'Saturdays', start:'19:00', end:'04:00', artists:['K-Klass', 'Doorly', 'Oliver Lang', 'Dave Seaman', 'Pete Gooding', 'Jason Bye']},
+  {id:'sat-masaka', day:'saturday july 4', venue:'Cova Santa', title:'Masaka Africana', start:'19:00', end:'05:00', artists:['Mickey Dastinz', '+ more TBA']},
+  {id:'sat-flower-power', day:'saturday july 4', venue:'Pacha Ibiza', title:'Flower Power', start:'23:00', end:'06:00', artists:['Roger Sanchez', 'Kristen Knight', 'Anthony Barrios']},
+  {id:'sat-elrow-unvrs', day:'saturday july 4', venue:'[UNVRS]', title:'elrow Ibiza | Nowmads', start:'23:30', end:'', artists:['Chelina Manuhutu', 'Kevin de Vries', 'Max Styler', 'Rendher']},
+  {id:'sat-bresh', day:'saturday july 4', venue:'Amnesia', title:'BRESH Ibiza', start:'23:30', end:'06:00', artists:['Special Guest TBA']},
+  {id:'sat-black-coffee', day:'saturday july 4', venue:'Hï Ibiza', title:'Black Coffee', start:'23:30', end:'', artists:['Black Coffee', 'Jimi Jules', 'Meera', 'Skepta', 'Loco Dice', 'Syreeta']},
+  {id:'sat-claptone', day:'saturday july 4', venue:'Chinois Ibiza', title:'Claptone presents The Masquerade', start:'23:30', end:'06:30', artists:['Claptone', 'Myd', 'Melé', 'Malive']},
+  {id:'sat-kodo-lio', day:'saturday july 4', venue:'Lío Ibiza', title:'Kōdō', start:'23:45', end:'05:00', artists:[]},
+  {id:'sat-fuego', day:'saturday july 4', venue:'Eden', title:'Fuego', start:'23:45', end:'06:00', artists:[]},
+  {id:'sat-fiesta-del-agua', day:'saturday july 4', venue:'Es Paradis', title:'Fiesta del Agua', start:'23:59', end:'06:00', artists:[]},
+
+  {id:'sun-formentera-with-benefits', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Formentera With Benefits', start:'10:30', end:'21:00', artists:['operated by Ibiza Boat Club']},
+  {id:'sun-day-in-paradise', day:'sunday july 5', venue:'Boat Parties - San Antonio', title:'A Day In Paradise', start:'12:00', end:'17:00', artists:[]},
+  {id:'sun-bottomless-brunch', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Bottomless Brunch Boat Party', start:'13:00', end:'17:00', artists:['operated by Ibiza Boat Club']},
+  {id:'sun-sin-sundays', day:'sunday july 5', venue:'O Beach Ibiza', title:'SIN Sundays', start:'13:00', end:'23:00', artists:['Billie Clements', 'Chris Wright', 'Jonathan Ulysses', 'Jamie Love', 'Sam Dungate']},
+  {id:'sun-rb-affair', day:'sunday july 5', venue:'Ibiza Rocks Pool Club', title:'R&B Affair Pool Party', start:'14:00', end:'21:00', artists:['Line-up TBA']},
+  {id:'sun-oceanbeat-afternoon', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Afternoon Boat Party', start:'14:30', end:'17:30', artists:[]},
+  {id:'sun-cruise-crush', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Cruise Crush Boat Party', start:'14:30', end:'17:30', artists:[]},
+  {id:'sun-joy-festival', day:'sunday july 5', venue:'528 Ibiza', title:'JOY Festival', start:'17:00', end:'23:00', artists:['Boss Priester', 'Dennis Quin', 'Michael de Hey', 'Ozzie Guven', 'Robbie Doherty']},
+  {id:'sun-swedish-house-mafia', day:'sunday july 5', venue:'Ushuaïa Ibiza', title:'Swedish House Mafia', start:'17:00', end:'23:00', artists:['Swedish House Mafia', '+ more TBA']},
+  {id:'sun-oceanbeat-sunset', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Oceanbeat Ibiza Sunset Boat Party', start:'18:00', end:'21:00', artists:[]},
+  {id:'sun-pantheon-levi', day:'sunday july 5', venue:'Cova Santa', title:'Pantheøn | Levi', start:'18:00', end:'05:00', artists:['Levi', '+ more TBA']},
+  {id:'sun-aftersun', day:'sunday july 5', venue:"Boat Parties - Playa d'en Bossa", title:'Aftersun Ibiza Boat Party', start:'18:15', end:'21:15', artists:['operated by Ibiza Boat Club']},
+  {id:'sun-nido', day:'sunday july 5', venue:'Akasha - Las Dalias', title:'Nido', start:'19:00', end:'05:00', artists:['Cris44', 'Share', 'Panyer', 'LevyM']},
+  {id:'sun-jean-michel-jarre', day:'sunday july 5', venue:'Amnesia', title:'Jean-Michel Jarre', start:'20:00', end:'', artists:['Jean-Michel Jarre', 'Joplyn', 'Les Schmitz']},
+  {id:'sun-solomun', day:'sunday july 5', venue:'Pacha Ibiza', title:'Solomun +1', start:'23:00', end:'06:00', artists:['Solomun', 'Skrillex']},
+  {id:'sun-carl-cox', day:'sunday july 5', venue:'[UNVRS]', title:'Carl Cox', start:'23:30', end:'', artists:['Carl Cox', 'Richie Hawtin', 'Adam Ten', 'Anna Tur', 'Melon Bomb']},
+  {id:'sun-camelphat', day:'sunday july 5', venue:'Hï Ibiza', title:'CAMELPHAT present Summer Of Love', start:'23:30', end:'05:00', artists:['CAMELPHAT', 'Mita Gami', 'Indira Paganotto', 'Ben Klock', 'SPFDJ']},
+  {id:'sun-bedouin', day:'sunday july 5', venue:'Chinois Ibiza', title:'Bedouin presents Saga', start:'23:30', end:'06:30', artists:['Bedouin', 'Damian Lazarus', 'Fiona Kraft']},
+  {id:'sun-lio-travieso', day:'sunday july 5', venue:'Lío Ibiza', title:'Travieso', start:'23:45', end:'05:00', artists:[]},
+  {id:'sun-cue', day:'sunday july 5', venue:'Eden', title:'CUE', start:'23:45', end:'06:00', artists:['Di Chiara Brothers', 'Evie', 'Tre Reynolds', 'Connor.Alexander']},
+  {id:'sun-pyramid', day:'sunday july 5', venue:'Amnesia', title:'Pyramid', start:'23:59', end:'06:00', artists:['Ricardo Villalobos B2B Enzo Siragusa', 'Shonky B2B Traumer', 'I Hate Models', 'Nina Kraviz', 'Marco Faraone']},
+  {id:'sun-dont-tell-mama', day:'sunday july 5', venue:'Es Paradis', title:"Pedro Cazanova presents Don't Tell Mama", start:'23:59', end:'06:00', artists:['Pedro Cazanova', '+ more TBA']}
+];
+
+const DAYS = ['thursday july 2', 'friday july 3', 'saturday july 4', 'sunday july 5'];
+
+/*
+  Paste your deployed Google Apps Script Web App URL here.
+  It should look like:
+  https://script.google.com/macros/s/AKfycb.../exec
+*/
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTJzODYoFo5fIKgdRV2ACU7IgmhXkCym-FXSawNA56p3VvqxGPVZHwEGflcjg2vGB7gw/exec';
+
+const NAME_KEY = 'ibiza-event-voter-name-v2';
+
+let selectedVenues = new Set(EVENTS.map(e => e.venue));
+let votesByName = {};
+let isLoadingVotes = false;
+let isSavingVotes = false;
+let pendingSaveTimer = null;
+
+const nameInput = document.getElementById('nameInput');
+const artistSearch = document.getElementById('artistSearch');
+const columns = document.getElementById('columns');
+const stats = document.getElementById('stats');
+const venueOptions = document.getElementById('venueOptions');
+const venueSummary = document.getElementById('venueSummary');
+const nameWarning = document.getElementById('nameWarning');
+const syncStatus = document.getElementById('syncStatus');
+const setupWarning = document.getElementById('setupWarning');
+
+function normalizedName() {
+  return nameInput.value.trim().replace(/\s+/g, ' ');
+}
+
+function isConfigured() {
+  return APPS_SCRIPT_URL && !APPS_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE');
+}
+
+function setStatus(message, isError = false) {
+  syncStatus.textContent = message;
+  syncStatus.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+}
+
+function jsonp(params) {
+  return new Promise((resolve, reject) => {
+    if (!isConfigured()) {
+      reject(new Error('Apps Script URL is not configured yet.'));
+      return;
+    }
+
+    const callbackName = 'ibizaVotesCallback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const url = new URL(APPS_SCRIPT_URL);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    url.searchParams.set('callback', callbackName);
+    url.searchParams.set('_', Date.now().toString());
+
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timed out contacting Google Apps Script.'));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      script.remove();
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+    }
+
+    window[callbackName] = (data) => {
+      cleanup();
+      if (data && data.ok === false) reject(new Error(data.error || 'Apps Script returned an error.'));
+      else resolve(data);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Could not load Google Apps Script response.'));
+    };
+
+    script.src = url.toString();
+    document.body.appendChild(script);
+  });
+}
+
+function votesByEvent() {
+  const result = {};
+  Object.entries(votesByName).forEach(([name, eventIds]) => {
+    if (!Array.isArray(eventIds)) return;
+    eventIds.forEach(eventId => {
+      if (!result[eventId]) result[eventId] = [];
+      result[eventId].push(name);
+    });
+  });
+  Object.values(result).forEach(names => names.sort((a,b) => a.localeCompare(b)));
+  return result;
+}
+
+function votersFor(eventId) {
+  return votesByEvent()[eventId] || [];
+}
+
+function isVotedByMe(eventId) {
+  const name = normalizedName();
+  return !!name && Array.isArray(votesByName[name]) && votesByName[name].includes(eventId);
+}
+
+function minutes(t) {
+  if (!t) return 99999;
+  const [h,m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function escapeAttr(str) { return escapeHtml(str); }
+
+function renderVenues() {
+  const venues = [...new Set(EVENTS.map(e => e.venue))].sort((a,b) => a.localeCompare(b));
+  venueOptions.innerHTML = venues.map(v => `
+    <label class="venue-option">
+      <input type="checkbox" value="${escapeAttr(v)}" ${selectedVenues.has(v) ? 'checked' : ''}>
+      <span>${escapeHtml(v)}</span>
+    </label>
+  `).join('');
+
+  const selectedCount = selectedVenues.size;
+  venueSummary.textContent = selectedCount === venues.length ? 'All venues' : selectedCount === 0 ? 'No venues' : `${selectedCount} venue${selectedCount === 1 ? '' : 's'} selected`;
+
+  venueOptions.querySelectorAll('input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedVenues.add(cb.value);
+      else selectedVenues.delete(cb.value);
+      renderVenues();
+      render();
+    });
+  });
+}
+
+function matchesFilters(ev) {
+  const q = artistSearch.value.trim().toLowerCase();
+  const text = [ev.title, ev.venue, ...(ev.artists || [])].join(' ').toLowerCase();
+  return selectedVenues.has(ev.venue) && (!q || text.includes(q));
+}
+
+function render() {
+  setupWarning.style.display = isConfigured() ? 'none' : 'block';
+
+  const filtered = EVENTS.filter(matchesFilters).sort((a,b) =>
+    DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
+    minutes(a.start) - minutes(b.start) ||
+    minutes(a.end) - minutes(b.end) ||
+    a.venue.localeCompare(b.venue)
+  );
+
+  const peopleCount = Object.keys(votesByName).filter(name => Array.isArray(votesByName[name]) && votesByName[name].length).length;
+  stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${peopleCount} people have voted`;
+  columns.innerHTML = DAYS.map(day => {
+    const items = filtered.filter(e => e.day === day);
+    return `<article class="day"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
+  }).join('');
+
+  columns.querySelectorAll('.event').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = normalizedName();
+      if (!name) {
+        nameWarning.style.display = 'block';
+        nameInput.focus();
+        return;
+      }
+      if (!isConfigured()) {
+        setStatus('Paste your Google Apps Script URL into APPS_SCRIPT_URL first.', true);
+        return;
+      }
+
+      const eventId = btn.dataset.eventId;
+      const mine = new Set(votesByName[name] || []);
+      if (mine.has(eventId)) mine.delete(eventId);
+      else mine.add(eventId);
+
+      votesByName[name] = [...mine].sort();
+      localStorage.setItem(NAME_KEY, name);
+      render();
+      scheduleSave(name);
+    });
+  });
+}
+
+function renderEvent(ev) {
+  const voters = votersFor(ev.id);
+  const title = voters.length ? `Voted by: ${voters.join(', ')}` : 'No votes yet';
+  const voted = isVotedByMe(ev.id);
+  const disabled = isSavingVotes ? 'disabled' : '';
+  return `
+    <button class="event ${voted ? 'voted' : ''}" data-event-id="${escapeAttr(ev.id)}" title="${escapeAttr(title)}" ${disabled}>
+      <div class="event-top"><div class="event-title">${escapeHtml(ev.title)}</div><div class="badge">${voters.length}</div></div>
+      <div class="meta">${escapeHtml(ev.start)}${ev.end ? '–' + escapeHtml(ev.end) : ''} • ${escapeHtml(ev.venue)}</div>
+      <div class="artists">${escapeHtml((ev.artists || []).join(', ') || 'Line-up not listed')}</div>
+      <div class="vote-hint">${voted ? '✓ You voted for this' : 'Tap to vote'}</div>
+    </button>
+  `;
+}
+
+async function loadVotes() {
+  if (!isConfigured()) {
+    setStatus('Google Sheets backend not configured yet.');
+    render();
+    return;
+  }
+
+  isLoadingVotes = true;
+  setStatus('Loading shared votes...');
+  try {
+    const data = await jsonp({ action: 'list' });
+    votesByName = data.votesByName || {};
+    setStatus('Shared votes loaded.');
+  } catch (err) {
+    console.error(err);
+    setStatus(err.message || 'Could not load shared votes.', true);
+  } finally {
+    isLoadingVotes = false;
+    render();
+  }
+}
+
+function scheduleSave(name) {
+  clearTimeout(pendingSaveTimer);
+  pendingSaveTimer = setTimeout(() => saveMyVotes(name), 250);
+}
+
+async function saveMyVotes(name) {
+  if (!isConfigured()) return;
+  isSavingVotes = true;
+  setStatus('Saving your votes...');
+  render();
+
+  try {
+    const eventIds = (votesByName[name] || []).join(',');
+    const data = await jsonp({
+      action: 'setUserVotes',
+      name,
+      votes: eventIds
+    });
+    votesByName = data.votesByName || votesByName;
+    setStatus('Saved to Google Sheet.');
+  } catch (err) {
+    console.error(err);
+    setStatus(err.message || 'Could not save votes.', true);
+  } finally {
+    isSavingVotes = false;
+    render();
+  }
+}
+
+nameInput.value = localStorage.getItem(NAME_KEY) || '';
+nameInput.addEventListener('input', () => {
+  localStorage.setItem(NAME_KEY, normalizedName());
+  nameWarning.style.display = 'none';
+  render();
+});
+
+artistSearch.addEventListener('input', render);
+
+document.getElementById('clearMyVotes').addEventListener('click', () => {
+  const name = normalizedName();
+  if (!name) {
+    nameWarning.style.display = 'block';
+    nameInput.focus();
+    return;
+  }
+  votesByName[name] = [];
+  render();
+  scheduleSave(name);
+});
+
+document.getElementById('allVenues').addEventListener('click', () => {
+  selectedVenues = new Set(EVENTS.map(e => e.venue));
+  renderVenues();
+  render();
+});
+
+document.getElementById('noVenues').addEventListener('click', () => {
+  selectedVenues = new Set();
+  renderVenues();
+  render();
+});
+
+renderVenues();
+render();
+loadVotes();
+
+</script>
+</body>
+</html>
