@@ -136,7 +136,18 @@
       transition: transform .12s ease, border-color .12s ease, background .12s ease;
     }
     .event:hover { transform: translateY(-1px); border-color: rgba(120,255,214,.6); }
-    .event.voted { border-color: var(--accent); background: linear-gradient(135deg, rgba(120,255,214,.14), rgba(255,122,217,.08)); }
+    .event.has-votes {
+      border-color: rgba(255, 190, 105, calc(.28 + var(--vote-heat, 0) * .5));
+      background:
+        linear-gradient(135deg,
+          rgba(255, 190, 105, calc(.08 + var(--vote-heat, 0) * .18)),
+          rgba(255, 122, 217, calc(.04 + var(--vote-heat, 0) * .14)),
+          rgba(120, 255, 214, calc(.03 + var(--vote-heat, 0) * .10))
+        ),
+        rgba(23,26,47,.88);
+      box-shadow: 0 0 0 1px rgba(255, 190, 105, calc(.05 + var(--vote-heat, 0) * .16));
+    }
+    .event.voted { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(120,255,214,.34), 0 10px 28px rgba(120,255,214,.08); }
     .event-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
     .event-title { font-weight: 800; line-height: 1.1; font-size: 14px; }
     .badge { flex: 0 0 auto; min-width: 28px; padding: 5px 8px; border-radius: 999px; background: var(--panel-2); color: var(--accent); font-weight: 800; font-size: 12px; text-align: center; border: 1px solid rgba(120,255,214,.22); }
@@ -145,6 +156,21 @@
     .vote-hint { margin-top: 8px; font-size: 11px; color: var(--accent); opacity: .9; }
     .empty { color: var(--muted); border: 1px dashed var(--border); border-radius: 16px; padding: 18px; text-align: center; }
     .warning { color: var(--danger); font-size: 12px; margin-top: 7px; display: none; }
+    .vote-filter {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .vote-filter input { width: auto; accent-color: var(--accent); }
     @media (max-width: 1180px) {
       .controls { grid-template-columns: 1fr 1fr; }
       .columns { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
@@ -201,6 +227,10 @@
             </div>
           </details>
         </div>
+        <label class="vote-filter" title="Show only events with at least one shared vote">
+          <input id="onlyVotedFilter" type="checkbox" />
+          <span>Only show events with votes</span>
+        </label>
         <button class="clear-btn" id="clearMyVotes" type="button">Clear my votes</button>
       </div>
       <div id="syncStatus" class="sync-status"></div>
@@ -327,6 +357,7 @@ let pendingSaveTimer = null;
 
 const nameInput = document.getElementById('nameInput');
 const artistSearch = document.getElementById('artistSearch');
+const onlyVotedFilter = document.getElementById('onlyVotedFilter');
 const columns = document.getElementById('columns');
 const stats = document.getElementById('stats');
 const venueOptions = document.getElementById('venueOptions');
@@ -406,6 +437,11 @@ function votersFor(eventId) {
   return votesByEvent()[eventId] || [];
 }
 
+function maxVoteCount() {
+  const byEvent = votesByEvent();
+  return Math.max(1, ...Object.values(byEvent).map(names => names.length));
+}
+
 function isVotedByMe(eventId) {
   const name = normalizedName();
   return !!name && Array.isArray(votesByName[name]) && votesByName[name].includes(eventId);
@@ -448,7 +484,10 @@ function renderVenues() {
 function matchesFilters(ev) {
   const q = artistSearch.value.trim().toLowerCase();
   const text = [ev.title, ev.venue, ...(ev.artists || [])].join(' ').toLowerCase();
-  return selectedVenues.has(ev.venue) && (!q || text.includes(q));
+  const hasVotes = votersFor(ev.id).length > 0;
+  return selectedVenues.has(ev.venue)
+    && (!q || text.includes(q))
+    && (!onlyVotedFilter.checked || hasVotes);
 }
 
 function render() {
@@ -462,7 +501,8 @@ function render() {
   );
 
   const peopleCount = Object.keys(votesByName).filter(name => Array.isArray(votesByName[name]) && votesByName[name].length).length;
-  stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${peopleCount} people have voted`;
+  const votedEventCount = Object.keys(votesByEvent()).length;
+  stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted`;
   columns.innerHTML = DAYS.map(day => {
     const items = filtered.filter(e => e.day === day);
     return `<article class="day"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
@@ -496,12 +536,15 @@ function render() {
 
 function renderEvent(ev) {
   const voters = votersFor(ev.id);
-  const title = voters.length ? `Voted by: ${voters.join(', ')}` : 'No votes yet';
+  const voteCount = voters.length;
+  const title = voteCount ? `Voted by: ${voters.join(', ')}` : 'No votes yet';
   const voted = isVotedByMe(ev.id);
   const disabled = isSavingVotes ? 'disabled' : '';
+  const heat = voteCount ? Math.max(0.22, Math.min(1, voteCount / maxVoteCount())) : 0;
+  const classes = ['event', voteCount ? 'has-votes' : '', voted ? 'voted' : ''].filter(Boolean).join(' ');
   return `
-    <button class="event ${voted ? 'voted' : ''}" data-event-id="${escapeAttr(ev.id)}" title="${escapeAttr(title)}" ${disabled}>
-      <div class="event-top"><div class="event-title">${escapeHtml(ev.title)}</div><div class="badge">${voters.length}</div></div>
+    <button class="${classes}" style="--vote-heat:${heat.toFixed(2)}" data-event-id="${escapeAttr(ev.id)}" title="${escapeAttr(title)}" ${disabled}>
+      <div class="event-top"><div class="event-title">${escapeHtml(ev.title)}</div><div class="badge">${voteCount}</div></div>
       <div class="meta">${escapeHtml(ev.start)}${ev.end ? '–' + escapeHtml(ev.end) : ''} • ${escapeHtml(ev.venue)}</div>
       <div class="artists">${escapeHtml((ev.artists || []).join(', ') || 'Line-up not listed')}</div>
       <div class="vote-hint">${voted ? '✓ You voted for this' : 'Tap to vote'}</div>
@@ -568,6 +611,7 @@ nameInput.addEventListener('input', () => {
 });
 
 artistSearch.addEventListener('input', render);
+onlyVotedFilter.addEventListener('change', render);
 
 document.getElementById('clearMyVotes').addEventListener('click', () => {
   const name = normalizedName();
