@@ -371,7 +371,80 @@
       font-size: 13px;
       line-height: 1.45;
     }
-    .event[disabled] { opacity: .72; cursor: wait; }
+
+    .event.pending { opacity: .72; cursor: wait; }
+    .badge.vote-badge-button {
+      cursor: pointer;
+      appearance: none;
+      font-family: inherit;
+    }
+    .badge.vote-badge-button:hover,
+    .badge.vote-badge-button:focus {
+      outline: none;
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 3px rgba(120,255,214,.16), 0 0 calc(8px + var(--vote-heat, 0) * 15px) hsla(var(--heat-hue, 46), 100%, 52%, calc(.10 + var(--vote-heat, 0) * .25));
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(4, 6, 18, .68);
+      backdrop-filter: blur(8px);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: min(460px, 100%);
+      max-height: min(720px, calc(100vh - 36px));
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: #15182c;
+      box-shadow: 0 24px 90px rgba(0,0,0,.48);
+      padding: 18px;
+    }
+    .modal-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    .modal-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: -.02em;
+    }
+    .modal-close {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .modal-close:hover { border-color: var(--accent); }
+    .modal-meta { color: var(--muted); font-size: 13px; line-height: 1.4; margin-bottom: 14px; }
+    .modal-count { font-weight: 900; color: var(--accent); margin-bottom: 10px; }
+    .voter-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .voter-pill {
+      border: 1px solid rgba(120,255,214,.22);
+      background: rgba(120,255,214,.08);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
 </style>
 </head>
 <body>
@@ -461,6 +534,18 @@
   <main class="wrap">
     <section class="columns" id="columns"></section>
   </main>
+
+  <div class="modal-backdrop" id="voterModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <h3 class="modal-title" id="modalTitle">Votes</h3>
+        <button class="modal-close" id="modalClose" type="button" aria-label="Close voter list">×</button>
+      </div>
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-count" id="modalCount"></div>
+      <div class="voter-list" id="modalVoters"></div>
+    </div>
+  </div>
 
 <script>
 
@@ -584,12 +669,11 @@ const NAME_KEY = 'ibiza-event-voter-name-v2';
 let selectedVenues = new Set(EVENTS.map(e => e.venue));
 let votesByName = {};
 let isLoadingVotes = false;
-let isSavingVotes = false;
-let pendingSaveTimer = null;
 let voteCutoff = 0;
 let showMyVotesOnly = false;
 let tabletStartDayIndex = 0;
 let lastLayoutMode = '';
+let pendingEventIds = new Set();
 
 const nameInput = document.getElementById('nameInput');
 const artistSearch = document.getElementById('artistSearch');
@@ -608,6 +692,12 @@ const venueSummary = document.getElementById('venueSummary');
 const nameWarning = document.getElementById('nameWarning');
 const syncStatus = document.getElementById('syncStatus');
 const setupWarning = document.getElementById('setupWarning');
+const voterModal = document.getElementById('voterModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalMeta = document.getElementById('modalMeta');
+const modalCount = document.getElementById('modalCount');
+const modalVoters = document.getElementById('modalVoters');
+const modalClose = document.getElementById('modalClose');
 
 function normalizedName() {
   return nameInput.value.trim().replace(/\s+/g, ' ');
@@ -620,6 +710,16 @@ function isConfigured() {
 function setStatus(message, isError = false) {
   syncStatus.textContent = message;
   syncStatus.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+}
+
+function cloneVotes(votes) {
+  return JSON.parse(JSON.stringify(votes || {}));
+}
+
+function setVotesFromResponse(data) {
+  if (data && data.votesByName && typeof data.votesByName === 'object') {
+    votesByName = data.votesByName;
+  }
 }
 
 function jsonp(params) {
@@ -669,7 +769,7 @@ function votesByEvent() {
     if (!Array.isArray(eventIds)) return;
     eventIds.forEach(eventId => {
       if (!result[eventId]) result[eventId] = [];
-      result[eventId].push(name);
+      if (!result[eventId].includes(name)) result[eventId].push(name);
     });
   });
   Object.values(result).forEach(names => names.sort((a,b) => a.localeCompare(b)));
@@ -682,7 +782,7 @@ function votersFor(eventId) {
 
 function maxVoteCount() {
   const byEvent = votesByEvent();
-  return Math.max(1, ...Object.values(byEvent).map(names => names.length));
+  return Math.max(0, ...Object.values(byEvent).map(names => names.length));
 }
 
 function isVotedByMe(eventId) {
@@ -755,8 +855,78 @@ function matchesFilters(ev) {
     && (!showMyVotesOnly || isVotedByMe(ev.id));
 }
 
+function applyLocalVote(name, eventId, shouldVote) {
+  const mine = new Set(votesByName[name] || []);
+  if (shouldVote) mine.add(eventId);
+  else mine.delete(eventId);
+  votesByName[name] = [...mine].sort();
+}
+
+async function persistVote(name, eventId, shouldVote, previousVotes) {
+  pendingEventIds.add(eventId);
+  setStatus(shouldVote ? 'Saving vote...' : 'Removing vote...');
+  render();
+
+  try {
+    const data = await jsonp({
+      action: shouldVote ? 'vote' : 'unvote',
+      name,
+      eventId
+    });
+    setVotesFromResponse(data);
+    setStatus('Saved to Google Sheet.');
+  } catch (err) {
+    console.error(err);
+    votesByName = previousVotes;
+    setStatus(err.message || 'Could not save vote. Reverted change.', true);
+  } finally {
+    pendingEventIds.delete(eventId);
+    render();
+  }
+}
+
+async function clearUserVotes(name, previousVotes) {
+  setStatus('Clearing your votes...');
+  render();
+
+  try {
+    const data = await jsonp({ action: 'clearUserVotes', name });
+    setVotesFromResponse(data);
+    setStatus('Cleared your votes.');
+  } catch (err) {
+    console.error(err);
+    votesByName = previousVotes;
+    setStatus(err.message || 'Could not clear votes. Reverted change.', true);
+  } finally {
+    render();
+  }
+}
+
+function handleEventToggle(eventId) {
+  const name = normalizedName();
+  if (!name) {
+    nameWarning.style.display = 'block';
+    nameInput.focus();
+    return;
+  }
+  if (!isConfigured()) {
+    setStatus('Paste your Google Apps Script URL into APPS_SCRIPT_URL first.', true);
+    return;
+  }
+  if (pendingEventIds.has(eventId)) return;
+
+  const previousVotes = cloneVotes(votesByName);
+  const shouldVote = !isVotedByMe(eventId);
+  applyLocalVote(name, eventId, shouldVote);
+  localStorage.setItem(NAME_KEY, name);
+  render();
+  persistVote(name, eventId, shouldVote, previousVotes);
+}
+
 function render() {
   setupWarning.style.display = isConfigured() ? 'none' : 'block';
+
+  if (voteCutoff > maxVoteCount()) voteCutoff = maxVoteCount();
 
   const filtered = EVENTS.filter(matchesFilters).sort((a,b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
@@ -777,28 +947,20 @@ function render() {
     return `<article class="day" id="${dayId(day)}"><h2>${escapeHtml(formatDayLabel(day))}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
   }).join('');
 
-  columns.querySelectorAll('.event').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const name = normalizedName();
-      if (!name) {
-        nameWarning.style.display = 'block';
-        nameInput.focus();
-        return;
+  columns.querySelectorAll('.event').forEach(card => {
+    card.addEventListener('click', () => handleEventToggle(card.dataset.eventId));
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleEventToggle(card.dataset.eventId);
       }
-      if (!isConfigured()) {
-        setStatus('Paste your Google Apps Script URL into APPS_SCRIPT_URL first.', true);
-        return;
-      }
+    });
+  });
 
-      const eventId = btn.dataset.eventId;
-      const mine = new Set(votesByName[name] || []);
-      if (mine.has(eventId)) mine.delete(eventId);
-      else mine.add(eventId);
-
-      votesByName[name] = [...mine].sort();
-      localStorage.setItem(NAME_KEY, name);
-      render();
-      scheduleSave(name);
+  columns.querySelectorAll('.vote-badge-button').forEach(btn => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openVoterModal(btn.dataset.eventId);
     });
   });
 }
@@ -808,21 +970,39 @@ function renderEvent(ev) {
   const voteCount = voters.length;
   const title = voteCount ? `Voted by: ${voters.join(', ')}` : 'No votes yet';
   const voted = isVotedByMe(ev.id);
-  const disabled = isSavingVotes ? 'disabled' : '';
-  // Heat scale is fixed to the 11-person group: 1 vote = faint yellow, 11 votes = bright red.
+  const pending = pendingEventIds.has(ev.id);
   const heat = voteCount ? Math.max(0.08, Math.min(1, voteCount / 11)) : 0;
-  // Hue scale: 48 = soft yellow, 2 = bright red. More votes => hotter.
   const heatHue = voteCount ? Math.round(48 - heat * 46) : 48;
   const fire = voteCount >= 9 ? '🔥🔥🔥' : voteCount >= 6 ? '🔥🔥' : voteCount >= 3 ? '🔥' : '';
-  const classes = ['event', voteCount ? 'has-votes' : '', voted ? 'voted' : ''].filter(Boolean).join(' ');
+  const classes = ['event', voteCount ? 'has-votes' : '', voted ? 'voted' : '', pending ? 'pending' : ''].filter(Boolean).join(' ');
   return `
-    <button class="${classes}" style="--vote-heat:${heat.toFixed(2)}; --heat-hue:${heatHue}" data-event-id="${escapeAttr(ev.id)}" title="${escapeAttr(title)}" ${disabled}>
+    <div class="${classes}" role="button" tabindex="0" style="--vote-heat:${heat.toFixed(2)}; --heat-hue:${heatHue}" data-event-id="${escapeAttr(ev.id)}" title="${escapeAttr(title)}" aria-label="${escapeAttr(ev.title)}; ${voteCount} votes">
       <div class="event-top"><div class="event-title">${escapeHtml(ev.title)}</div><div class="fire-tier" aria-label="${voteCount} votes">${fire}</div></div>
       <div class="meta">${escapeHtml(ev.start)}${ev.end ? '–' + escapeHtml(ev.end) : ''} • ${escapeHtml(ev.venue)}</div>
       <div class="artists">${escapeHtml((ev.artists || []).join(', ') || 'Line-up not listed')}</div>
-      <div class="event-bottom"><div>${voted ? '<span class="my-check" aria-label="You voted for this">✅</span>' : ''}</div><div class="vote-cluster"><div class="badge">${voteCount}</div></div></div>
-    </button>
+      <div class="event-bottom"><div>${voted ? '<span class="my-check" aria-label="You voted for this">✅</span>' : ''}</div><div class="vote-cluster"><button class="badge vote-badge-button" type="button" data-event-id="${escapeAttr(ev.id)}" aria-label="Show voters for ${escapeAttr(ev.title)}">${voteCount}</button></div></div>
+    </div>
   `;
+}
+
+function openVoterModal(eventId) {
+  const ev = EVENTS.find(e => e.id === eventId);
+  if (!ev) return;
+  const voters = votersFor(eventId);
+  modalTitle.textContent = ev.title;
+  modalMeta.textContent = `${formatDayLabel(ev.day)} • ${ev.start}${ev.end ? '–' + ev.end : ''} • ${ev.venue}`;
+  modalCount.textContent = `${voters.length} vote${voters.length === 1 ? '' : 's'}`;
+  modalVoters.innerHTML = voters.length
+    ? voters.map(name => `<span class="voter-pill">${escapeHtml(name)}</span>`).join('')
+    : '<span class="empty">No votes yet.</span>';
+  voterModal.classList.add('open');
+  voterModal.setAttribute('aria-hidden', 'false');
+  modalClose.focus();
+}
+
+function closeVoterModal() {
+  voterModal.classList.remove('open');
+  voterModal.setAttribute('aria-hidden', 'true');
 }
 
 async function loadVotes() {
@@ -836,7 +1016,7 @@ async function loadVotes() {
   setStatus('Loading shared votes...');
   try {
     const data = await jsonp({ action: 'list' });
-    votesByName = data.votesByName || {};
+    setVotesFromResponse(data);
     setStatus('Shared votes loaded.');
   } catch (err) {
     console.error(err);
@@ -846,37 +1026,6 @@ async function loadVotes() {
     render();
   }
 }
-
-function scheduleSave(name) {
-  clearTimeout(pendingSaveTimer);
-  pendingSaveTimer = setTimeout(() => saveMyVotes(name), 250);
-}
-
-async function saveMyVotes(name) {
-  if (!isConfigured()) return;
-  isSavingVotes = true;
-  setStatus('Saving your votes...');
-  render();
-
-  try {
-    const eventIds = (votesByName[name] || []).join(',');
-    const data = await jsonp({
-      action: 'setUserVotes',
-      name,
-      votes: eventIds
-    });
-    votesByName = data.votesByName || votesByName;
-    setStatus('Saved to Google Sheet.');
-  } catch (err) {
-    console.error(err);
-    setStatus(err.message || 'Could not save votes.', true);
-  } finally {
-    isSavingVotes = false;
-    render();
-  }
-}
-
-
 
 const savedName = localStorage.getItem(NAME_KEY) || '';
 if ([...nameInput.options].some(option => option.value === savedName)) {
@@ -903,7 +1052,6 @@ showMyVotes.addEventListener('change', () => {
   render();
 });
 
-
 decrementVoteCutoff.addEventListener('click', () => {
   voteCutoff = Math.max(0, voteCutoff - 1);
   render();
@@ -913,7 +1061,6 @@ incrementVoteCutoff.addEventListener('click', () => {
   voteCutoff = Math.min(maxVoteCount(), voteCutoff + 1);
   render();
 });
-
 
 previousDays.addEventListener('click', () => {
   tabletStartDayIndex = Math.max(0, tabletStartDayIndex - 1);
@@ -941,9 +1088,11 @@ document.getElementById('clearMyVotes').addEventListener('click', () => {
     nameInput.focus();
     return;
   }
+  const previousVotes = cloneVotes(votesByName);
   votesByName[name] = [];
+  localStorage.setItem(NAME_KEY, name);
   render();
-  scheduleSave(name);
+  clearUserVotes(name, previousVotes);
 });
 
 document.getElementById('allVenues').addEventListener('click', () => {
@@ -958,12 +1107,20 @@ document.getElementById('noVenues').addEventListener('click', () => {
   render();
 });
 
+modalClose.addEventListener('click', closeVoterModal);
+voterModal.addEventListener('click', (event) => {
+  if (event.target === voterModal) closeVoterModal();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && voterModal.classList.contains('open')) closeVoterModal();
+});
+
 lastLayoutMode = layoutMode();
 renderVenues();
 render();
 loadVotes();
 
 </script>
-<!-- v21: centered comma date headers and tablet two-day carousel with arrows -->
+<!-- v22: optimistic single-row voting, VoteLog-compatible backend, clickable voter modal -->
 </body>
 </html>
