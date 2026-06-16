@@ -113,7 +113,31 @@
     .venue-actions { display: flex; gap: 8px; padding: 8px 8px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
     .mini-btn { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 999px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
     main.wrap { padding-top: 18px; }
-    .stats { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+    .header-meta {
+      margin-top: 12px;
+    }
+    .stats {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .desktop-day-headers {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(280px, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+    .desktop-day-header {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(32,36,61,.92);
+      box-shadow: 0 8px 22px rgba(0,0,0,.18);
+      font-size: 15px;
+      font-weight: 900;
+      text-transform: capitalize;
+      letter-spacing: -.01em;
+    }
     .columns {
       display: grid;
       grid-template-columns: repeat(4, minmax(280px, 1fr));
@@ -128,16 +152,7 @@
       min-height: 70vh;
     }
     .day h2 {
-      position: sticky;
-      top: var(--sticky-day-top, 150px);
-      z-index: 5;
-      margin: -12px -12px 12px;
-      padding: 14px 12px 12px;
-      background: linear-gradient(rgba(23,26,47,.98), rgba(23,26,47,.92));
-      border-bottom: 1px solid var(--border);
-      border-radius: 22px 22px 0 0;
-      font-size: 17px;
-      text-transform: capitalize;
+      display: none;
     }
     .event {
       display: block;
@@ -266,12 +281,22 @@
     @media (max-width: 1180px) {
       .top-controls { grid-template-columns: minmax(180px, 280px) auto; }
       .filter-controls { grid-template-columns: 1fr 1fr; }
-      .columns { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
+      .columns, .desktop-day-headers { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
     }
     @media (max-width: 700px) {
       .top-controls, .filter-controls, .columns { grid-template-columns: 1fr; }
       header { position: static; }
-      .day h2 { position: static; }
+      .desktop-day-headers { display: none; }
+      .day h2 {
+        display: block;
+        margin: -12px -12px 12px;
+        padding: 14px 12px 12px;
+        background: linear-gradient(rgba(23,26,47,.98), rgba(23,26,47,.92));
+        border-bottom: 1px solid var(--border);
+        border-radius: 22px 22px 0 0;
+        font-size: 17px;
+        text-transform: capitalize;
+      }
       .mobile-day-nav {
         position: sticky;
         top: 0;
@@ -303,7 +328,10 @@
         border-color: var(--accent);
         box-shadow: 0 0 0 3px rgba(120,255,214,.14);
       }
-      .day { scroll-margin-top: 66px; }
+      .day {
+        min-height: auto;
+        scroll-margin-top: 66px;
+      }
     }
   
     .sync-status { margin-top: 10px; font-size: 12px; color: var(--muted); }
@@ -386,6 +414,15 @@
         </div>
       </div>
       <div id="syncStatus" class="sync-status"></div>
+      <div class="header-meta" aria-label="Current event counts and day headings">
+        <div id="stats" class="stats"></div>
+        <div class="desktop-day-headers" aria-hidden="true">
+          <div class="desktop-day-header">Thursday July 2</div>
+          <div class="desktop-day-header">Friday July 3</div>
+          <div class="desktop-day-header">Saturday July 4</div>
+          <div class="desktop-day-header">Sunday July 5</div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -397,7 +434,6 @@
   </nav>
 
   <main class="wrap">
-    <div id="stats" class="stats"></div>
     <section class="columns" id="columns"></section>
   </main>
 
@@ -781,16 +817,6 @@ async function saveMyVotes(name) {
 }
 
 
-function updateStickyDayOffset() {
-  const header = document.querySelector('header');
-  const isMobile = window.matchMedia('(max-width: 700px)').matches;
-  if (!header || isMobile) return;
-  const offset = Math.ceil(header.getBoundingClientRect().height + 10);
-  document.documentElement.style.setProperty('--sticky-day-top', `${offset}px`);
-}
-
-window.addEventListener('load', updateStickyDayOffset);
-window.addEventListener('resize', updateStickyDayOffset);
 
 const savedName = localStorage.getItem(NAME_KEY) || '';
 if ([...nameInput.options].some(option => option.value === savedName)) {
@@ -858,6 +884,6 @@ render();
 loadVotes();
 
 </script>
-<!-- v16: calculate desktop sticky date-header offset from actual header height -->
+<!-- v17: desktop stats and date headings are frozen inside main sticky header; mobile sticky day nav unchanged -->
 </body>
 </html>
