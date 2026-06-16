@@ -186,7 +186,7 @@
     .event-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; min-height: 18px; }
     .event-title { font-weight: 800; line-height: 1.1; font-size: 14px; padding-right: 4px; }
     .fire-tier { flex: 0 0 auto; min-width: 72px; text-align: right; line-height: 1; letter-spacing: -4px; font-size: 28px; transform: translateY(-4px); filter: drop-shadow(0 0 12px rgba(255, 126, 40, .58)); }
-    .event-bottom { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 8px; }
+    .event-bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; min-height: 30px; }
     .vote-cluster { display: inline-flex; align-items: center; gap: 6px; }
     .badge { flex: 0 0 auto; min-width: 28px; padding: 5px 8px; border-radius: 999px; background: var(--panel-2); color: var(--accent); font-weight: 800; font-size: 12px; text-align: center; border: 1px solid rgba(120,255,214,.22); }
     .event.has-votes .badge {
@@ -197,7 +197,7 @@
     }
     .meta { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.35; }
     .artists { margin-top: 8px; font-size: 12px; line-height: 1.35; color: #d8dcf0; }
-    .my-check { flex: 0 0 auto; font-size: 16px; line-height: 1; filter: drop-shadow(0 0 6px rgba(120,255,214,.35)); transform: translateY(1px); }
+    .my-check { flex: 0 0 auto; font-size: 20px; line-height: 1; filter: drop-shadow(0 0 8px rgba(120,255,214,.42)); transform: translateY(1px); }
     .filter-toggle {
       display: inline-flex;
       align-items: center;
@@ -254,6 +254,15 @@
       font-weight: 900;
       color: var(--accent);
     }
+
+    .mobile-day-nav {
+      display: none;
+    }
+
+    .mobile-day-nav a {
+      color: var(--text);
+      text-decoration: none;
+    }
     @media (max-width: 1180px) {
       .top-controls { grid-template-columns: minmax(180px, 280px) auto; }
       .filter-controls { grid-template-columns: 1fr 1fr; }
@@ -264,6 +273,38 @@
       .top-controls, .filter-controls, .columns { grid-template-columns: 1fr; }
       header { position: static; }
       .day h2 { position: static; }
+      .mobile-day-nav {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px 12px;
+        background: rgba(14,16,32,.94);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border);
+      }
+      .mobile-day-nav a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 8px 6px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255,255,255,.06);
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text);
+        text-decoration: none;
+      }
+      .mobile-day-nav a:active,
+      .mobile-day-nav a:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(120,255,214,.14);
+      }
+      .day { scroll-margin-top: 66px; }
     }
   
     .sync-status { margin-top: 10px; font-size: 12px; color: var(--muted); }
@@ -348,6 +389,13 @@
       <div id="syncStatus" class="sync-status"></div>
     </div>
   </header>
+
+  <nav class="mobile-day-nav" aria-label="Jump to day">
+    <a href="#day-thursday-july-2">Thu</a>
+    <a href="#day-friday-july-3">Fri</a>
+    <a href="#day-saturday-july-4">Sat</a>
+    <a href="#day-sunday-july-5">Sun</a>
+  </nav>
 
   <main class="wrap">
     <div id="stats" class="stats"></div>
@@ -452,12 +500,16 @@ const EVENTS = [
 
 const DAYS = ['thursday july 2', 'friday july 3', 'saturday july 4', 'sunday july 5'];
 
+function dayId(day) {
+  return 'day-' + String(day).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 /*
   Paste your deployed Google Apps Script Web App URL here.
   It should look like:
   https://script.google.com/macros/s/AKfycb.../exec
 */
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTJzODYoFo5fIKgdRV2ACU7IgmhXkCym-FXSawNA56p3VvqxGPVZHwEGflcjg2vGB7gw/exec';
+const APPS_SCRIPT_URL = atob('aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J6VEp6T0RZb0ZvNWZJS2dkUlYyQUNVN0lnbWhYa0N5bS1GWFNhd05BNTZwM1Z2cXhHUFZaSHdFR2ZsY2pnMnZHQjdndy9leGVj');
 
 const NAME_KEY = 'ibiza-event-voter-name-v2';
 
@@ -627,7 +679,7 @@ function render() {
   stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted${cutoffText}${mineText}`;
   columns.innerHTML = DAYS.map(day => {
     const items = filtered.filter(e => e.day === day);
-    return `<article class="day"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
+    return `<article class="day" id="${dayId(day)}"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
   }).join('');
 
   columns.querySelectorAll('.event').forEach(btn => {
@@ -673,7 +725,7 @@ function renderEvent(ev) {
       <div class="event-top"><div class="event-title">${escapeHtml(ev.title)}</div><div class="fire-tier" aria-label="${voteCount} votes">${fire}</div></div>
       <div class="meta">${escapeHtml(ev.start)}${ev.end ? '–' + escapeHtml(ev.end) : ''} • ${escapeHtml(ev.venue)}</div>
       <div class="artists">${escapeHtml((ev.artists || []).join(', ') || 'Line-up not listed')}</div>
-      <div class="event-bottom"><div class="vote-cluster">${voted ? '<span class="my-check" aria-label="You voted for this">✅</span>' : ''}<div class="badge">${voteCount}</div></div></div>
+      <div class="event-bottom"><div>${voted ? '<span class="my-check" aria-label="You voted for this">✅</span>' : ''}</div><div class="vote-cluster"><div class="badge">${voteCount}</div></div></div>
     </button>
   `;
 }
