@@ -129,7 +129,7 @@
     }
     .day h2 {
       position: sticky;
-      top: 130px;
+      top: var(--sticky-day-top, 150px);
       z-index: 5;
       margin: -12px -12px 12px;
       padding: 14px 12px 12px;
@@ -267,7 +267,6 @@
       .top-controls { grid-template-columns: minmax(180px, 280px) auto; }
       .filter-controls { grid-template-columns: 1fr 1fr; }
       .columns { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
-      .day h2 { top: 236px; }
     }
     @media (max-width: 700px) {
       .top-controls, .filter-controls, .columns { grid-template-columns: 1fr; }
@@ -781,6 +780,18 @@ async function saveMyVotes(name) {
   }
 }
 
+
+function updateStickyDayOffset() {
+  const header = document.querySelector('header');
+  const isMobile = window.matchMedia('(max-width: 700px)').matches;
+  if (!header || isMobile) return;
+  const offset = Math.ceil(header.getBoundingClientRect().height + 10);
+  document.documentElement.style.setProperty('--sticky-day-top', `${offset}px`);
+}
+
+window.addEventListener('load', updateStickyDayOffset);
+window.addEventListener('resize', updateStickyDayOffset);
+
 const savedName = localStorage.getItem(NAME_KEY) || '';
 if ([...nameInput.options].some(option => option.value === savedName)) {
   nameInput.value = savedName;
@@ -842,10 +853,11 @@ document.getElementById('noVenues').addEventListener('click', () => {
 });
 
 renderVenues();
+updateStickyDayOffset();
 render();
 loadVotes();
 
 </script>
-<!-- v12: align top controls, place voted check outside vote badge -->
+<!-- v16: calculate desktop sticky date-header offset from actual header height -->
 </body>
 </html>
