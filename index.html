@@ -38,13 +38,23 @@
     .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
     .controls {
       display: grid;
-      grid-template-columns: minmax(180px, 280px) minmax(180px, 1fr) minmax(220px, 360px) auto;
       gap: 12px;
-      align-items: end;
       margin-top: 16px;
     }
+    .top-controls {
+      display: grid;
+      grid-template-columns: minmax(180px, 280px) auto 1fr;
+      gap: 12px;
+      align-items: end;
+    }
+    .filter-controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 360px) minmax(220px, 300px);
+      gap: 12px;
+      align-items: end;
+    }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    input[type="text"], .dropdown-button {
+    input[type="text"], select, .dropdown-button {
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -54,7 +64,7 @@
       font-size: 14px;
       outline: none;
     }
-    input[type="text"]:focus, .dropdown-button:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(120,255,214,.14); }
+    input[type="text"]:focus, select:focus, .dropdown-button:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(120,255,214,.14); }
     .clear-btn {
       border: 1px solid var(--border);
       background: rgba(255,255,255,.06);
@@ -133,51 +143,90 @@
       padding: 12px;
       margin-bottom: 10px;
       cursor: pointer;
-      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease, box-shadow .12s ease;
+      position: relative;
+      overflow: hidden;
     }
     .event:hover { transform: translateY(-1px); border-color: rgba(120,255,214,.6); }
     .event.has-votes {
-      border-color: rgba(255, 190, 105, calc(.28 + var(--vote-heat, 0) * .5));
-      background:
-        linear-gradient(135deg,
-          rgba(255, 190, 105, calc(.08 + var(--vote-heat, 0) * .18)),
-          rgba(255, 122, 217, calc(.04 + var(--vote-heat, 0) * .14)),
-          rgba(120, 255, 214, calc(.03 + var(--vote-heat, 0) * .10))
-        ),
-        rgba(23,26,47,.88);
-      box-shadow: 0 0 0 1px rgba(255, 190, 105, calc(.05 + var(--vote-heat, 0) * .16));
+      border-color: rgba(255, 190, 105, calc(.34 + var(--vote-heat, 0) * .55));
+      background: rgba(23,26,47,.88);
+      box-shadow:
+        0 0 0 1px rgba(255, 190, 105, calc(.10 + var(--vote-heat, 0) * .32)),
+        0 8px calc(18px + var(--vote-heat, 0) * 22px) rgba(255, 156, 74, calc(.05 + var(--vote-heat, 0) * .18));
     }
-    .event.voted { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(120,255,214,.34), 0 10px 28px rgba(120,255,214,.08); }
+    .event.has-votes::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: calc(5px + var(--vote-heat, 0) * 9px);
+      background: rgba(255, 190, 105, calc(.55 + var(--vote-heat, 0) * .35));
+    }
+    .event.has-votes::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 190, 105, calc(.03 + var(--vote-heat, 0) * .13));
+      pointer-events: none;
+    }
+    .event.voted { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(120,255,214,.38), 0 10px 28px rgba(120,255,214,.10); }
     .event-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
     .event-title { font-weight: 800; line-height: 1.1; font-size: 14px; }
     .badge { flex: 0 0 auto; min-width: 28px; padding: 5px 8px; border-radius: 999px; background: var(--panel-2); color: var(--accent); font-weight: 800; font-size: 12px; text-align: center; border: 1px solid rgba(120,255,214,.22); }
+    .event.has-votes .badge {
+      background: rgba(255, 190, 105, calc(.18 + var(--vote-heat, 0) * .45));
+      color: #fff7e8;
+      border-color: rgba(255, 215, 135, calc(.45 + var(--vote-heat, 0) * .4));
+      box-shadow: 0 0 calc(8px + var(--vote-heat, 0) * 18px) rgba(255, 190, 105, calc(.12 + var(--vote-heat, 0) * .28));
+      transform: scale(calc(1 + var(--vote-heat, 0) * .12));
+    }
     .meta { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.35; }
     .artists { margin-top: 8px; font-size: 12px; line-height: 1.35; color: #d8dcf0; }
     .vote-hint { margin-top: 8px; font-size: 11px; color: var(--accent); opacity: .9; }
     .empty { color: var(--muted); border: 1px dashed var(--border); border-radius: 16px; padding: 18px; text-align: center; }
     .warning { color: var(--danger); font-size: 12px; margin-top: 7px; display: none; }
-    .vote-filter {
-      height: 100%;
+    .vote-cutoff {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
-      padding: 12px;
+      min-height: 46px;
+      padding: 8px 10px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,.04);
       border-radius: 14px;
       color: var(--text);
       font-size: 13px;
-      cursor: pointer;
       user-select: none;
     }
-    .vote-filter input { width: auto; accent-color: var(--accent); }
+    .vote-cutoff-controls { display: flex; align-items: center; gap: 8px; }
+    .vote-cutoff button {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .vote-cutoff button:hover { border-color: var(--accent); }
+    .vote-cutoff button:disabled { opacity: .35; cursor: not-allowed; border-color: var(--border); }
+    #voteCutoffValue {
+      min-width: 24px;
+      text-align: center;
+      font-weight: 900;
+      color: var(--accent);
+    }
     @media (max-width: 1180px) {
-      .controls { grid-template-columns: 1fr 1fr; }
+      .top-controls { grid-template-columns: minmax(180px, 280px) auto; }
+      .filter-controls { grid-template-columns: 1fr 1fr; }
       .columns { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
-      .day h2 { top: 196px; }
+      .day h2 { top: 236px; }
     }
     @media (max-width: 700px) {
-      .controls, .columns { grid-template-columns: 1fr; }
+      .top-controls, .filter-controls, .columns { grid-template-columns: 1fr; }
       header { position: static; }
       .day h2 { position: static; }
     }
@@ -200,38 +249,62 @@
   <header>
     <div class="wrap">
       <h1>Ibiza Event Voter</h1>
-      <p class="subtitle">July 2–5, 2026. Enter your name, then tap events to vote/unvote. Votes are shared through Google Sheets.</p>
+      <p class="subtitle">July 2–5, 2026. Select your name, then tap events to vote/unvote. Votes are shared through Google Sheets.</p>
       <div id="setupWarning" class="setup-box" style="display:none;">
         Backend not configured yet. Paste your deployed Google Apps Script Web App URL into <code>APPS_SCRIPT_URL</code> in this HTML file.
       </div>
       <div class="controls">
-        <div>
-          <label for="nameInput">Your name</label>
-          <input id="nameInput" type="text" placeholder="e.g. Rob" autocomplete="name" />
-          <div id="nameWarning" class="warning">Enter a name before voting.</div>
+        <div class="top-controls">
+          <div>
+            <label for="nameInput">Your name</label>
+            <select id="nameInput">
+              <option value="">Select your name…</option>
+              <option value="Marcel">Marcel</option>
+              <option value="Mathijs">Mathijs</option>
+              <option value="Blagoy">Blagoy</option>
+              <option value="Andrew">Andrew</option>
+              <option value="Tudor">Tudor</option>
+              <option value="Nach">Nach</option>
+              <option value="David">David</option>
+              <option value="Jason">Jason</option>
+              <option value="Michael">Michael</option>
+              <option value="Angel">Angel</option>
+              <option value="Rob">Rob</option>
+            </select>
+            <div id="nameWarning" class="warning">Select your name before voting.</div>
+          </div>
+          <button class="clear-btn" id="clearMyVotes" type="button">Clear my votes</button>
         </div>
-        <div>
-          <label for="artistSearch">Search artists / event names</label>
-          <input id="artistSearch" type="text" placeholder="e.g. Calvin Harris, boat, Pacha..." />
-        </div>
-        <div>
-          <label>Filter venues</label>
-          <details id="venueDropdown" class="dropdown">
-            <summary class="dropdown-button" id="venueSummary">All venues</summary>
-            <div class="dropdown-menu">
-              <div class="venue-actions">
-                <button class="mini-btn" id="allVenues" type="button">All</button>
-                <button class="mini-btn" id="noVenues" type="button">None</button>
+        <div class="filter-controls">
+          <div>
+            <label for="artistSearch">Search artists / event names</label>
+            <input id="artistSearch" type="text" placeholder="e.g. Calvin Harris, boat, Pacha..." />
+          </div>
+          <div>
+            <label>Filter venues</label>
+            <details id="venueDropdown" class="dropdown">
+              <summary class="dropdown-button" id="venueSummary">All venues</summary>
+              <div class="dropdown-menu">
+                <div class="venue-actions">
+                  <button class="mini-btn" id="allVenues" type="button">All</button>
+                  <button class="mini-btn" id="noVenues" type="button">None</button>
+                </div>
+                <div id="venueOptions"></div>
               </div>
-              <div id="venueOptions"></div>
+            </details>
+          </div>
+          <div>
+            <label>Vote count filter</label>
+            <div class="vote-cutoff" title="Show events with at least this many votes">
+              <span>Votes ≥</span>
+              <div class="vote-cutoff-controls">
+                <button id="decrementVoteCutoff" type="button" aria-label="Decrease vote cutoff">‹</button>
+                <span id="voteCutoffValue">0</span>
+                <button id="incrementVoteCutoff" type="button" aria-label="Increase vote cutoff">›</button>
+              </div>
             </div>
-          </details>
+          </div>
         </div>
-        <label class="vote-filter" title="Show only events with at least one shared vote">
-          <input id="onlyVotedFilter" type="checkbox" />
-          <span>Only show events with votes</span>
-        </label>
-        <button class="clear-btn" id="clearMyVotes" type="button">Clear my votes</button>
       </div>
       <div id="syncStatus" class="sync-status"></div>
     </div>
@@ -354,10 +427,13 @@ let votesByName = {};
 let isLoadingVotes = false;
 let isSavingVotes = false;
 let pendingSaveTimer = null;
+let voteCutoff = 0;
 
 const nameInput = document.getElementById('nameInput');
 const artistSearch = document.getElementById('artistSearch');
-const onlyVotedFilter = document.getElementById('onlyVotedFilter');
+const voteCutoffValue = document.getElementById('voteCutoffValue');
+const decrementVoteCutoff = document.getElementById('decrementVoteCutoff');
+const incrementVoteCutoff = document.getElementById('incrementVoteCutoff');
 const columns = document.getElementById('columns');
 const stats = document.getElementById('stats');
 const venueOptions = document.getElementById('venueOptions');
@@ -484,14 +560,15 @@ function renderVenues() {
 function matchesFilters(ev) {
   const q = artistSearch.value.trim().toLowerCase();
   const text = [ev.title, ev.venue, ...(ev.artists || [])].join(' ').toLowerCase();
-  const hasVotes = votersFor(ev.id).length > 0;
+  const voteCount = votersFor(ev.id).length;
   return selectedVenues.has(ev.venue)
     && (!q || text.includes(q))
-    && (!onlyVotedFilter.checked || hasVotes);
+    && voteCount >= voteCutoff;
 }
 
 function render() {
   setupWarning.style.display = isConfigured() ? 'none' : 'block';
+  voteCutoff = Math.max(0, Math.min(voteCutoff, maxVoteCount()));
 
   const filtered = EVENTS.filter(matchesFilters).sort((a,b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
@@ -502,7 +579,11 @@ function render() {
 
   const peopleCount = Object.keys(votesByName).filter(name => Array.isArray(votesByName[name]) && votesByName[name].length).length;
   const votedEventCount = Object.keys(votesByEvent()).length;
-  stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted`;
+  voteCutoffValue.textContent = voteCutoff;
+  decrementVoteCutoff.disabled = voteCutoff <= 0;
+  incrementVoteCutoff.disabled = voteCutoff >= maxVoteCount();
+  const cutoffText = voteCutoff > 0 ? ` • showing events with ≥ ${voteCutoff} vote${voteCutoff === 1 ? '' : 's'}` : '';
+  stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted${cutoffText}`;
   columns.innerHTML = DAYS.map(day => {
     const items = filtered.filter(e => e.day === day);
     return `<article class="day"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
@@ -603,15 +684,29 @@ async function saveMyVotes(name) {
   }
 }
 
-nameInput.value = localStorage.getItem(NAME_KEY) || '';
-nameInput.addEventListener('input', () => {
+const savedName = localStorage.getItem(NAME_KEY) || '';
+if ([...nameInput.options].some(option => option.value === savedName)) {
+  nameInput.value = savedName;
+} else {
+  nameInput.value = '';
+  localStorage.removeItem(NAME_KEY);
+}
+nameInput.addEventListener('change', () => {
   localStorage.setItem(NAME_KEY, normalizedName());
   nameWarning.style.display = 'none';
   render();
 });
 
 artistSearch.addEventListener('input', render);
-onlyVotedFilter.addEventListener('change', render);
+
+function setVoteCutoff(nextCutoff) {
+  const maxVotes = maxVoteCount();
+  voteCutoff = Math.max(0, Math.min(maxVotes, nextCutoff));
+  render();
+}
+
+decrementVoteCutoff.addEventListener('click', () => setVoteCutoff(voteCutoff - 1));
+incrementVoteCutoff.addEventListener('click', () => setVoteCutoff(voteCutoff + 1));
 
 document.getElementById('clearMyVotes').addEventListener('click', () => {
   const name = normalizedName();
