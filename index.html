@@ -703,7 +703,6 @@ nameInput.addEventListener('change', () => {
 });
 
 artistSearch.addEventListener('input', render);
-onlyVotedFilter.addEventListener('change', render);
 
 document.getElementById('clearMyVotes').addEventListener('click', () => {
   const name = normalizedName();
@@ -734,5 +733,6 @@ render();
 loadVotes();
 
 </script>
+<!-- v6: removed stale onlyVotedFilter listener that blocked initial render -->
 </body>
 </html>
