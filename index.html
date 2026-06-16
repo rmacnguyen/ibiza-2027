@@ -121,6 +121,12 @@
       font-size: 13px;
       margin-bottom: 10px;
     }
+    .desktop-day-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      align-items: stretch;
+    }
     .desktop-day-headers {
       display: grid;
       grid-template-columns: repeat(4, minmax(280px, 1fr));
@@ -137,7 +143,25 @@
       font-weight: 900;
       text-transform: capitalize;
       letter-spacing: -.01em;
+      text-align: center;
     }
+    .tablet-day-arrow {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-size: 26px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,.14);
+    }
+    .tablet-day-arrow:hover:not(:disabled) { border-color: var(--accent); }
+    .tablet-day-arrow:disabled { opacity: .35; cursor: default; }
     .columns {
       display: grid;
       grid-template-columns: repeat(4, minmax(280px, 1fr));
@@ -278,15 +302,17 @@
       color: var(--text);
       text-decoration: none;
     }
-    @media (max-width: 1180px) {
+    @media (max-width: 1180px) and (min-width: 701px) {
       .top-controls { grid-template-columns: minmax(180px, 280px) auto; }
       .filter-controls { grid-template-columns: 1fr 1fr; }
+      .desktop-day-row { grid-template-columns: auto 1fr auto; }
+      .tablet-day-arrow { display: flex; }
       .columns, .desktop-day-headers { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
     }
     @media (max-width: 700px) {
       .top-controls, .filter-controls, .columns { grid-template-columns: 1fr; }
       header { position: static; }
-      .desktop-day-headers { display: none; }
+      .desktop-day-row { display: none; }
       .day h2 {
         display: block;
         margin: -12px -12px 12px;
@@ -416,11 +442,10 @@
       <div id="syncStatus" class="sync-status"></div>
       <div class="header-meta" aria-label="Current event counts and day headings">
         <div id="stats" class="stats"></div>
-        <div class="desktop-day-headers" aria-hidden="true">
-          <div class="desktop-day-header">Thursday July 2</div>
-          <div class="desktop-day-header">Friday July 3</div>
-          <div class="desktop-day-header">Saturday July 4</div>
-          <div class="desktop-day-header">Sunday July 5</div>
+        <div class="desktop-day-row" aria-label="Visible days">
+          <button class="tablet-day-arrow" id="previousDays" type="button" aria-label="Show previous day pair">‹</button>
+          <div class="desktop-day-headers" id="desktopDayHeaders"></div>
+          <button class="tablet-day-arrow" id="nextDays" type="button" aria-label="Show next day pair">›</button>
         </div>
       </div>
     </div>
@@ -539,6 +564,14 @@ function dayId(day) {
   return 'day-' + String(day).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function formatDayLabel(day) {
+  return String(day).replace(/^(\w+)\s+(.+)$/, (_, weekday, rest) => {
+    const titleWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    const titleRest = rest.replace(/\b\w/g, c => c.toUpperCase());
+    return `${titleWeekday}, ${titleRest}`;
+  });
+}
+
 /*
   Paste your deployed Google Apps Script Web App URL here.
   It should look like:
@@ -555,6 +588,8 @@ let isSavingVotes = false;
 let pendingSaveTimer = null;
 let voteCutoff = 0;
 let showMyVotesOnly = false;
+let tabletStartDayIndex = 0;
+let lastLayoutMode = '';
 
 const nameInput = document.getElementById('nameInput');
 const artistSearch = document.getElementById('artistSearch');
@@ -565,6 +600,9 @@ const decrementVoteCutoff = document.getElementById('decrementVoteCutoff');
 const incrementVoteCutoff = document.getElementById('incrementVoteCutoff');
 const columns = document.getElementById('columns');
 const stats = document.getElementById('stats');
+const desktopDayHeaders = document.getElementById('desktopDayHeaders');
+const previousDays = document.getElementById('previousDays');
+const nextDays = document.getElementById('nextDays');
 const venueOptions = document.getElementById('venueOptions');
 const venueSummary = document.getElementById('venueSummary');
 const nameWarning = document.getElementById('nameWarning');
@@ -686,6 +724,27 @@ function renderVenues() {
   });
 }
 
+function layoutMode() {
+  if (window.matchMedia('(max-width: 700px)').matches) return 'mobile';
+  if (window.matchMedia('(max-width: 1180px)').matches) return 'tablet';
+  return 'desktop';
+}
+
+function visibleDays() {
+  if (layoutMode() === 'tablet') return DAYS.slice(tabletStartDayIndex, tabletStartDayIndex + 2);
+  return DAYS;
+}
+
+function updateDayNavigation() {
+  const days = visibleDays();
+  desktopDayHeaders.innerHTML = days.map(day => `<div class="desktop-day-header">${escapeHtml(formatDayLabel(day))}</div>`).join('');
+  if (previousDays && nextDays) {
+    const isTablet = layoutMode() === 'tablet';
+    previousDays.disabled = !isTablet || tabletStartDayIndex <= 0;
+    nextDays.disabled = !isTablet || tabletStartDayIndex >= DAYS.length - 2;
+  }
+}
+
 function matchesFilters(ev) {
   const q = artistSearch.value.trim().toLowerCase();
   const text = [ev.title, ev.venue, ...(ev.artists || [])].join(' ').toLowerCase();
@@ -712,9 +771,10 @@ function render() {
   const cutoffText = voteCutoff > 0 ? ` • showing events with ≥ ${voteCutoff} vote${voteCutoff === 1 ? '' : 's'}` : '';
   const mineText = showMyVotesOnly ? ' • showing my votes only' : '';
   stats.textContent = `${filtered.length} of ${EVENTS.length} events shown • ${votedEventCount} events have votes • ${peopleCount} people have voted${cutoffText}${mineText}`;
-  columns.innerHTML = DAYS.map(day => {
+  updateDayNavigation();
+  columns.innerHTML = visibleDays().map(day => {
     const items = filtered.filter(e => e.day === day);
-    return `<article class="day" id="${dayId(day)}"><h2>${escapeHtml(day)}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
+    return `<article class="day" id="${dayId(day)}"><h2>${escapeHtml(formatDayLabel(day))}</h2>${items.length ? items.map(renderEvent).join('') : '<div class="empty">No events match your filters.</div>'}</article>`;
   }).join('');
 
   columns.querySelectorAll('.event').forEach(btn => {
@@ -854,6 +914,26 @@ incrementVoteCutoff.addEventListener('click', () => {
   render();
 });
 
+
+previousDays.addEventListener('click', () => {
+  tabletStartDayIndex = Math.max(0, tabletStartDayIndex - 1);
+  render();
+});
+
+nextDays.addEventListener('click', () => {
+  tabletStartDayIndex = Math.min(DAYS.length - 2, tabletStartDayIndex + 1);
+  render();
+});
+
+window.addEventListener('resize', () => {
+  const mode = layoutMode();
+  if (mode !== lastLayoutMode) {
+    lastLayoutMode = mode;
+    if (tabletStartDayIndex > DAYS.length - 2) tabletStartDayIndex = DAYS.length - 2;
+    render();
+  }
+});
+
 document.getElementById('clearMyVotes').addEventListener('click', () => {
   const name = normalizedName();
   if (!name) {
@@ -878,11 +958,12 @@ document.getElementById('noVenues').addEventListener('click', () => {
   render();
 });
 
+lastLayoutMode = layoutMode();
 renderVenues();
 render();
 loadVotes();
 
 </script>
-<!-- v20: fixed initial load by removing stale updateStickyDayOffset call so render() and loadVotes() run on page load -->
+<!-- v21: centered comma date headers and tablet two-day carousel with arrows -->
 </body>
 </html>
