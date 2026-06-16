@@ -879,11 +879,10 @@ document.getElementById('noVenues').addEventListener('click', () => {
 });
 
 renderVenues();
-updateStickyDayOffset();
 render();
 loadVotes();
 
 </script>
-<!-- v17: desktop stats and date headings are frozen inside main sticky header; mobile sticky day nav unchanged -->
+<!-- v20: fixed initial load by removing stale updateStickyDayOffset call so render() and loadVotes() run on page load -->
 </body>
 </html>
